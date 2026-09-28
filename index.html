@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viktorina</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--neon:#39ff14;--bg:#050a05;--card:#0d170d;--line:#1a3a1a;--gray:#6f946f;--red:#ff4444;--white:#e8ffe8}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Rajdhani',sans-serif;font-weight:500;background:var(--bg);color:var(--white);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+background-image:linear-gradient(rgba(57,255,20,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(57,255,20,.03) 1px,transparent 1px);background-size:40px 40px}
+.box{width:100%;max-width:560px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:32px 28px;box-shadow:0 0 40px rgba(57,255,20,.07)}
+.page{display:none}.page.on{display:block}
+h1{font-family:'Orbitron',sans-serif;font-weight:900;font-size:1.5rem;color:var(--neon);text-shadow:0 0 12px var(--neon);letter-spacing:1px;margin-bottom:6px}
+p.sub{color:var(--gray);margin-bottom:24px}
+label{display:block;color:var(--gray);font-size:.95rem;margin:14px 0 6px}
+input{width:100%;background:rgba(57,255,20,.04);border:1px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--white);font:inherit;font-size:1.05rem}
+input:focus{outline:none;border-color:var(--neon);box-shadow:0 0 10px rgba(57,255,20,.25)}
+button{font:inherit;cursor:pointer}
+.go{width:100%;margin-top:24px;padding:14px;background:transparent;border:2px solid var(--neon);border-radius:8px;color:var(--neon);font-family:'Orbitron',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:1px;box-shadow:0 0 10px rgba(57,255,20,.35)}
+.go:hover{background:rgba(57,255,20,.1)}
+:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+.top{display:flex;justify-content:space-between;color:var(--gray);margin-bottom:8px}
+.top b{color:var(--neon)}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:22px}
+.bar i{display:block;height:100%;width:0;background:var(--neon);box-shadow:0 0 8px var(--neon)}
+#tbar i{transition:width 1s linear}
+.q{font-size:1.5rem;font-weight:700;line-height:1.3;margin-bottom:22px}
+.opts{display:grid;gap:10px}
+.opt{text-align:left;padding:13px 16px;background:rgba(57,255,20,.04);border:1px solid var(--line);border-radius:8px;color:var(--white);font-size:1.1rem;transition:border-color .15s,background .15s}
+.opt:hover:not(:disabled){border-color:var(--neon)}
+.opt.ok{border-color:var(--neon);background:rgba(57,255,20,.18)}
+.opt.no{border-color:var(--red);background:rgba(255,68,68,.15)}
+.score{font-family:'Orbitron',sans-serif;font-weight:900;font-size:3.2rem;color:var(--neon);text-shadow:0 0 16px var(--neon);margin:10px 0 4px}
+.who{color:var(--gray)}
+.msg{margin-top:14px;font-size:1.15rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="box">
+
+<section class="page on" id="pLogin">
+  <h1 id="title"></h1>
+  <p class="sub">Boshlash uchun ismingizni kiriting.</p>
+  <label for="fn">Ism</label><input id="fn" autocomplete="given-name">
+  <label for="ln">Familiya</label><input id="ln" autocomplete="family-name">
+  <button class="go" onclick="start()">Boshlash</button>
+</section>
+
+<section class="page" id="pQuiz">
+  <div class="top"><span>Savol <b id="cnt"></b></span><span>To'g'ri: <b id="sc">0</b></span></div>
+  <div class="bar" id="pbar"><i></i></div>
+  <div class="bar" id="tbar"><i></i></div>
+  <div class="q" id="qt"></div>
+  <div class="opts" id="opts"></div>
+</section>
+
+<section class="page" id="pEnd">
+  <h1>Natija</h1>
+  <div class="who" id="who"></div>
+  <div class="score" id="big"></div>
+  <div class="msg" id="msg"></div>
+  <button class="go" onclick="again()">Qaytadan boshlash</button>
+</section>
+
+</main>
+<script>
+// ===== SOZLAMALAR: shu 4 ta joyni o'zgartiring =====
+const TG_TOKEN = '8661753095:AAEnzBj1AAQmwUxIc8ETcX9eaG0DrmvTomc';   // @BotFather bergan token
+const TG_CHAT  = '6412450434';    // natija keladigan chat ID
+const TITLE    = 'Matematika viktorinasi';
+const TIME_PER_Q = 20;                      // soniya; 0 = vaqt cheklovi yo'q
+
+// Savollar: q = savol, o = 4 ta variant, a = to'g'ri javobning raqami (0 dan boshlanadi)
+const QUESTIONS = [
+  { q:"25 + 38 = ?", o:["53","63","73","64"], a:1 },
+  { q:"7 × 8 = ?", o:["54","56","58","64"], a:1 },
+  { q:"144 ÷ 12 = ?", o:["10","11","12","14"], a:2 },
+  { q:"15² = ?", o:["205","215","225","235"], a:2 },
+  { q:"√169 = ?", o:["11","12","13","14"], a:2 },
+  { q:"1000 − 367 = ?", o:["623","633","643","733"], a:1 },
+  { q:"18 × 15 = ?", o:["250","260","270","280"], a:2 },
+  { q:"(12 + 8) × 5 = ?", o:["60","100","80","90"], a:1 },
+  { q:"Kvadratning tomoni 9 sm. Uning yuzi necha sm²?", o:["18","36","81","72"], a:2 },
+  { q:"Radiusi 5 sm bo'lgan doira yuzi (π ≈ 3,14) necha sm²?", o:["31,4","78,5","15,7","157"], a:1 }
+];
+// ==================================================
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+let user, qs, i, score, log, timer, left, locked, done, partialSent;
+
+function tg(text, keep){
+  if (TG_TOKEN.startsWith('BOT_')) return;
+  fetch('https://api.telegram.org/bot'+TG_TOKEN+'/sendMessage', {
+    method:'POST', headers:{'Content-Type':'application/json'}, keepalive:!!keep,
+    body:JSON.stringify({chat_id:TG_CHAT, text, parse_mode:'HTML'})
+  }).catch(()=>{});
+}
+function show(id){ document.querySelectorAll('.page').forEach(p=>p.classList.remove('on')); $(id).classList.add('on'); }
+function report(head){
+  const n = QUESTIONS.length;
+  const lines = log.map((l,k)=>(l.ok?'✅ ':'❌ ')+(k+1)+'. '+esc(l.t.slice(0,60))+' → '+esc(String(l.a).slice(0,40)));
+  return head+'\n\n👤 <b>'+esc(user.fn+' '+user.ln)+'</b>\n✅ To\'g\'ri: <b>'+score+'/'+n+'</b> (javob berildi: '+log.length+')\n\n'+lines.join('\n')+'\n\n🕐 '+new Date().toLocaleString('uz-UZ');
+}
+
+function start(){
+  const fn=$('fn').value.trim(), ln=$('ln').value.trim();
+  if(!fn||!ln){ alert("Ism va familiyani kiriting."); return; }
+  user={fn,ln}; i=0; score=0; log=[]; done=false; partialSent=false;
+  qs = QUESTIONS.map(q=>({t:q.q, o:shuffle(q.o.map((x,k)=>({x, ok:k===q.a})))}));
+  tg('📚 <b>'+esc(TITLE)+'</b> — testni boshladi\n\n👤 <b>'+esc(fn+' '+ln)+'</b>\n🕐 '+new Date().toLocaleString('uz-UZ'));
+  show('pQuiz'); render();
+}
+
+function render(){
+  if(i>=qs.length){ return finish(); }
+  locked=false;
+  const q=qs[i];
+  $('cnt').textContent=(i+1)+'/'+qs.length;
+  $('sc').textContent=score;
+  $('pbar').firstElementChild.style.width=(i/qs.length*100)+'%';
+  $('qt').textContent=q.t;
+  const box=$('opts'); box.innerHTML='';
+  q.o.forEach((c,k)=>{ const b=document.createElement('button'); b.className='opt'; b.textContent=c.x; b.onclick=()=>pick(k); box.appendChild(b); });
+  clearInterval(timer);
+  const tb=$('tbar');
+  if(TIME_PER_Q>0){
+    tb.style.display='block'; left=TIME_PER_Q;
+    const f=tb.firstElementChild; f.style.transition='none'; f.style.width='100%'; void f.offsetWidth; f.style.transition='';
+    timer=setInterval(()=>{ left--; f.style.width=(left/TIME_PER_Q*100)+'%'; if(left<=0){ clearInterval(timer); pick(-1); } },1000);
+  } else tb.style.display='none';
+}
+
+function pick(k){
+  if(locked) return; locked=true; clearInterval(timer);
+  const q=qs[i], c=q.o[k], ok=!!(c&&c.ok);
+  if(ok) score++;
+  log.push({t:q.t, a:c?c.x:'— (vaqt tugadi)', ok});
+  document.querySelectorAll('.opt').forEach((b,j)=>{ b.disabled=true; if(q.o[j].ok) b.classList.add('ok'); else if(j===k) b.classList.add('no'); });
+  $('sc').textContent=score;
+  setTimeout(()=>{ i++; render(); }, 1200);
+}
+
+function finish(){
+  done=true; clearInterval(timer);
+  const n=qs.length, pct=Math.round(score/n*100);
+  $('who').textContent=user.fn+' '+user.ln;
+  $('big').textContent=score+'/'+n;
+  $('msg').textContent = pct===100?'Mukammal natija!':pct>=70?'Yaxshi natija!':pct>=50?'Yomon emas, yana urinib ko\'ring.':'Yana bir bor urinib ko\'ring.';
+  tg(report('📊 <b>'+esc(TITLE)+'</b> — test yakunlandi'));
+  show('pEnd');
+}
+function again(){ $('fn').value=''; $('ln').value=''; show('pLogin'); }
+
+// Test o'rtasida chiqib ketsa, hozirgi natijani yuboradi
+addEventListener('pagehide', ()=>{
+  if(user && !done && !partialSent && log.length){ partialSent=true; tg(report('⚠️ <b>'+esc(TITLE)+'</b> — testni yarim qoldirdi'), true); }
+});
+$('title').textContent=TITLE; document.title=TITLE;
+</script>
+</body>
+</html>
